@@ -28,13 +28,17 @@ export default class LabeledStatement extends StatementBase {
 
 	include(context: InclusionContext, includeChildrenRecursively: IncludeChildren): void {
 		this.included = true;
-		const brokenFlow = context.brokenFlow;
-		this.body.include(context, includeChildrenRecursively);
-		if (includeChildrenRecursively || context.includedLabels.has(this.label.name)) {
+		const { brokenFlow, includedLabels } = context;
+		const nestContext = { ...context, includedLabels: new Set<string>() };
+		this.body.include(nestContext, includeChildrenRecursively);
+		if (includeChildrenRecursively || nestContext.includedLabels.has(this.label.name)) {
 			this.label.include();
-			context.includedLabels.delete(this.label.name);
+			nestContext.includedLabels.delete(this.label.name);
 			context.brokenFlow = brokenFlow;
+		} else {
+			context.brokenFlow = nestContext.brokenFlow;
 		}
+		context.includedLabels = new Set([...includedLabels, ...nestContext.includedLabels]);
 	}
 
 	render(code: MagicString, options: RenderOptions): void {
